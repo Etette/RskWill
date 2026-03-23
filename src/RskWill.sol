@@ -452,13 +452,12 @@ contract RskWill is IRskWill {
                 uint256 share = (total * aa.beneficiaries[i].bps) / TOTAL_BPS;
                 remaining -= share;
                 (bool sent,) = aa.beneficiaries[i].wallet.call{value: share}("");
-                // If the send fails we note it in an event but continue
                 if (sent) {
                     emit AssetDistributed(willOwner, asset, aa.beneficiaries[i].wallet, share);
                 }
             }
 
-            // Last beneficiary gets the remainder — eliminates rounding dust
+            // last beneficiary gets the remaining dust
             (bool lastSent,) = aa.beneficiaries[len - 1].wallet.call{value: remaining}("");
             if (lastSent) {
                 emit AssetDistributed(willOwner, asset, aa.beneficiaries[len - 1].wallet, remaining);
