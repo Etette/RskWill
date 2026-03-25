@@ -1,66 +1,32 @@
-## Foundry
+# RSK-Will
 
-**Foundry is a blazing fast, portable and modular toolkit for Ethereum application development written in Rust.**
+An inheritance protocol that enables anyone to pass their assets to designated beneficiaries after death without relying on any trusted third party.
 
-Foundry consists of:
+RSK-Will lets anyone create an on-chain will. You deposit assets, assign beneficiaries with percentage split per beneficiary and set a window of time within which you must check in to prove you are still alive. If you stop checking in, your beneficiaries can claim the inheritance. After a short waiting period, the funds distribute automatically and permanently.
 
--   **Forge**: Ethereum testing framework (like Truffle, Hardhat and DappTools).
--   **Cast**: Swiss army knife for interacting with EVM smart contracts, sending transactions and getting chain data.
--   **Anvil**: Local Ethereum node, akin to Ganache, Hardhat Network.
--   **Chisel**: Fast, utilitarian, and verbose solidity REPL.
+## Rules
 
-## Documentation
+**Owner must check in periodically.** If you interact with your will either by depositing, updating or explicitly signalling liveness, your clock resets. If you miss the window entirely, your beneficiaries can act.
 
-https://book.getfoundry.sh/
+**Only beneficiaries can trigger a claim.** A stranger cannot initiate the process. Only someone you named in your will can start it.
 
-## Usage
+**Owner can cancel a false alarm.** If a beneficiary acts while you are still alive, you can cancel the claim. This resets your clock and returns everything to normal.
 
-### Build
+**Once the waiting period after a claim expires, no one can stop distribution.** Not even the owner. The contract executes automatically and the will is permanently settled.
 
-```shell
-$ forge build
-```
+**Withdrawals are locked during a live claim.** You cannot drain your will after a beneficiary has initiated. Funds are frozen until the claim is either cancelled or distributed.
 
-### Test
+**Every asset distributes independently.** Each token you deposit has its own beneficiary list and percentage split. A problem with one asset never blocks another from distributing.
 
-```shell
-$ forge test
-```
 
-### Format
+## Why use Rsk-Will
 
-```shell
-$ forge fmt
-```
+**No trusted third parties.** There is no lawyer, oracle or admin key. The rules are enforced entirely by the Owner using time and on-chain activity.
 
-### Gas Snapshots
+**One contract, many users.** Anyone can create a will inside the same deployed contract. Each will is fully isolated from every other.
 
-```shell
-$ forge snapshot
-```
+**Simplicity as security.** Access control comes from the state of the contract itself rather than an imported permissions framework. Every function does one thing.
 
-### Anvil
+**RIF Name Service support.** Beneficiaries can be identified by human-readable names like `etette.rsk` instead of raw addresses. Names are resolved once at registration time and the address is stored. The name is never consulted again after that.
 
-```shell
-$ anvil
-```
-
-### Deploy
-
-```shell
-$ forge script script/Counter.s.sol:CounterScript --rpc-url <your_rpc_url> --private-key <your_private_key>
-```
-
-### Cast
-
-```shell
-$ cast <subcommand>
-```
-
-### Help
-
-```shell
-$ forge --help
-$ anvil --help
-$ cast --help
-```
+**Gasless claims via RIF Relay.** A beneficiary can initiate a claim gaslessly. The RIF relayer submits the transaction on their behalf with the beneficiaries signature as prove, removing the barrier of needing gas to access what they are owed.
