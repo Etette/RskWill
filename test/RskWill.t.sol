@@ -106,7 +106,7 @@ contract ReentrantBeneficiary {
 contract RskWillTest is Test {
     // Deployed contracts
     RskWill public rskWill;
-    MockERC20 public tokenA;
+    MockERC20 public rifToken;
     MockERC20 public tokenB;
     BrokenERC20 public brokenToken;
     MockRNSRegistry public rnsRegistry;
@@ -114,10 +114,12 @@ contract RskWillTest is Test {
 
 
     address public owner = makeAddr("owner");
-    address public alice = makeAddr("alice"); // beneficiary
-    address public bob = makeAddr("bob"); // beneficiary
-    address public carol = makeAddr("carol"); // beneficiary
-    address public stranger = makeAddr("stranger"); // not a beneficiary
+    // beneficiaries
+    address public etette = makeAddr("etette"); 
+    address public sabak = makeAddr("sabak"); 
+    address public carol = makeAddr("carol");
+    // not a beneficiary 
+    address public luke = makeAddr("luke");
 
     uint256 public constant HEARTBEAT = 30 days;
     uint256 public constant COOLDOWN = 7 days;
@@ -127,11 +129,11 @@ contract RskWillTest is Test {
         forwarder = new MockForwarder();
         rskWill = new RskWill(address(rnsRegistry), address(forwarder));
 
-        tokenA = new MockERC20();
+        rifToken = new MockERC20();
         tokenB = new MockERC20();
         brokenToken = new BrokenERC20();
         vm.deal(owner, 100 ether);
-        tokenA.mint(owner, 1_000 ether);
+        rifToken.mint(owner, 1_000 ether);
         tokenB.mint(owner, 1_000 ether);
         brokenToken.mint(owner, 1_000 ether);
     }
@@ -145,25 +147,25 @@ contract RskWillTest is Test {
         // rBTC allocation
         address[] memory bens = new address[](2);
         uint256[] memory bps = new uint256[](2);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 6_000;
-        bens[1] = bob;
+        bens[1] = sabak;
         bps[1] = 4_000;
         rskWill.configureAsset(address(0), bens, bps);
 
         rskWill.depositRBTC{value: 10 ether}();
 
-        // ERC20 allocation
-        tokenA.approve(address(rskWill), type(uint256).max);
-        rskWill.configureAsset(address(tokenA), bens, bps);
-        rskWill.depositToken(address(tokenA), 100 ether);
+        // RIF token allocation
+        rifToken.approve(address(rskWill), type(uint256).max);
+        rskWill.configureAsset(address(rifToken), bens, bps);
+        rskWill.depositToken(address(rifToken), 100 ether);
 
         vm.stopPrank();
     }
 
     function _lapseAndClaim() internal {
         skip(HEARTBEAT + 1);
-        vm.prank(alice);
+        vm.prank(etette);
         rskWill.initiateClaim(owner);
     }
 
@@ -285,11 +287,11 @@ contract RskWillTest is Test {
     function test_depositToken_increasesBalance() public {
         vm.startPrank(owner);
         rskWill.createWill(HEARTBEAT, COOLDOWN);
-        tokenA.approve(address(rskWill), 50 ether);
-        rskWill.depositToken(address(tokenA), 50 ether);
+        rifToken.approve(address(rskWill), 50 ether);
+        rskWill.depositToken(address(rifToken), 50 ether);
         vm.stopPrank();
 
-        assertEq(rskWill.tokenBalance(owner, address(tokenA)), 50 ether);
+        assertEq(rskWill.tokenBalance(owner, address(rifToken)), 50 ether);
     }
 
     function test_depositToken_revertsOnZeroAddress() public {
@@ -303,9 +305,9 @@ contract RskWillTest is Test {
     function test_depositToken_revertsOnZeroAmount() public {
         vm.startPrank(owner);
         rskWill.createWill(HEARTBEAT, COOLDOWN);
-        tokenA.approve(address(rskWill), 50 ether);
+        rifToken.approve(address(rskWill), 50 ether);
         vm.expectRevert(IRskWill.ZeroAmount.selector);
-        rskWill.depositToken(address(tokenA), 0);
+        rskWill.depositToken(address(rifToken), 0);
         vm.stopPrank();
     }
 
@@ -313,7 +315,7 @@ contract RskWillTest is Test {
         vm.startPrank(owner);
         rskWill.createWill(HEARTBEAT, COOLDOWN);
         vm.expectRevert("insufficient allowance");
-        rskWill.depositToken(address(tokenA), 10 ether);
+        rskWill.depositToken(address(rifToken), 10 ether);
         vm.stopPrank();
     }
 
@@ -360,25 +362,25 @@ contract RskWillTest is Test {
     function test_withdrawToken_reducesBalance() public {
         vm.startPrank(owner);
         rskWill.createWill(HEARTBEAT, COOLDOWN);
-        tokenA.approve(address(rskWill), 100 ether);
-        rskWill.depositToken(address(tokenA), 100 ether);
-        rskWill.withdrawToken(address(tokenA), 40 ether);
+        rifToken.approve(address(rskWill), 100 ether);
+        rskWill.depositToken(address(rifToken), 100 ether);
+        rskWill.withdrawToken(address(rifToken), 40 ether);
         vm.stopPrank();
 
-        assertEq(rskWill.tokenBalance(owner, address(tokenA)), 60 ether);
+        assertEq(rskWill.tokenBalance(owner, address(rifToken)), 60 ether);
     }
 
     function test_withdrawToken_returnsTokensToOwner() public {
         vm.startPrank(owner);
         rskWill.createWill(HEARTBEAT, COOLDOWN);
-        tokenA.approve(address(rskWill), 100 ether);
-        rskWill.depositToken(address(tokenA), 100 ether);
+        rifToken.approve(address(rskWill), 100 ether);
+        rskWill.depositToken(address(rifToken), 100 ether);
 
-        uint256 before = tokenA.balanceOf(owner);
-        rskWill.withdrawToken(address(tokenA), 40 ether);
+        uint256 before = rifToken.balanceOf(owner);
+        rskWill.withdrawToken(address(rifToken), 40 ether);
         vm.stopPrank();
 
-        assertEq(tokenA.balanceOf(owner), before + 40 ether);
+        assertEq(rifToken.balanceOf(owner), before + 40 ether);
     }
 
     function test_withdrawToken_lockedDuringClaiming() public {
@@ -387,7 +389,7 @@ contract RskWillTest is Test {
 
         vm.expectRevert(IRskWill.WillNotActive.selector);
         vm.prank(owner);
-        rskWill.withdrawToken(address(tokenA), 10 ether);
+        rskWill.withdrawToken(address(rifToken), 10 ether);
     }
 
  
@@ -473,9 +475,9 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](2);
         uint256[] memory bps = new uint256[](2);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 7_000;
-        bens[1] = bob;
+        bens[1] = sabak;
         bps[1] = 3_000;
         rskWill.configureAsset(address(0), bens, bps);
         vm.stopPrank();
@@ -483,9 +485,9 @@ contract RskWillTest is Test {
         (address[] memory wallets, uint256[] memory allocs) = rskWill.assetBeneficiaries(owner, address(0));
 
         assertEq(wallets.length, 2);
-        assertEq(wallets[0], alice);
+        assertEq(wallets[0], etette);
         assertEq(allocs[0], 7_000);
-        assertEq(wallets[1], bob);
+        assertEq(wallets[1], sabak);
         assertEq(allocs[1], 3_000);
     }
 
@@ -495,8 +497,8 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](2);
         uint256[] memory bps = new uint256[](1);
-        bens[0] = alice;
-        bens[1] = bob;
+        bens[0] = etette;
+        bens[1] = sabak;
         bps[0] = 10_000;
 
         vm.expectRevert(IRskWill.AllocationMismatch.selector);
@@ -510,9 +512,9 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](2);
         uint256[] memory bps = new uint256[](2);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 5_000;
-        bens[1] = bob;
+        bens[1] = sabak;
         bps[1] = 4_000; // sums to 9 000
 
         vm.expectRevert(IRskWill.AllocationMismatch.selector);
@@ -526,19 +528,19 @@ contract RskWillTest is Test {
 
         address[] memory bens1 = new address[](1);
         uint256[] memory bps1 = new uint256[](1);
-        bens1[0] = alice;
+        bens1[0] = etette;
         bps1[0] = 10_000;
         rskWill.configureAsset(address(0), bens1, bps1);
         address[] memory bens2 = new address[](1);
         uint256[] memory bps2 = new uint256[](1);
-        bens2[0] = bob;
+        bens2[0] = sabak;
         bps2[0] = 10_000;
         rskWill.configureAsset(address(0), bens2, bps2);
         vm.stopPrank();
 
         (address[] memory wallets,) = rskWill.assetBeneficiaries(owner, address(0));
         assertEq(wallets.length, 1);
-        assertEq(wallets[0], bob);
+        assertEq(wallets[0], sabak);
     }
 
     function test_configureAsset_registersAssetInList() public {
@@ -547,10 +549,10 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](1);
         uint256[] memory bps = new uint256[](1);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 10_000;
         rskWill.configureAsset(address(0), bens, bps);
-        rskWill.configureAsset(address(tokenA), bens, bps);
+        rskWill.configureAsset(address(rifToken), bens, bps);
         vm.stopPrank();
 
         address[] memory assets = rskWill.configuredAssets(owner);
@@ -561,15 +563,15 @@ contract RskWillTest is Test {
         vm.startPrank(owner);
         rskWill.createWill(HEARTBEAT, COOLDOWN);
 
-        // alice at 100%
+        // etette at 100%
         address[] memory bens = new address[](1);
         uint256[] memory bps = new uint256[](1);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 10_000;
         rskWill.configureAsset(address(0), bens, bps);
 
-        // bob at 40%
-        rskWill.addBeneficiary(address(0), bob, 4_000);
+        // sabak at 40%
+        rskWill.addBeneficiary(address(0), sabak, 4_000);
         vm.stopPrank();
 
         (, uint256[] memory allocs) = rskWill.assetBeneficiaries(owner, address(0));
@@ -586,12 +588,12 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](1);
         uint256[] memory bps = new uint256[](1);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 10_000;
         rskWill.configureAsset(address(0), bens, bps);
 
         vm.expectRevert(IRskWill.BeneficiaryAlreadyAdded.selector);
-        rskWill.addBeneficiary(address(0), alice, 2_000);
+        rskWill.addBeneficiary(address(0), etette, 2_000);
         vm.stopPrank();
     }
 
@@ -601,7 +603,7 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](1);
         uint256[] memory bps = new uint256[](1);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 10_000;
         rskWill.configureAsset(address(0), bens, bps);
 
@@ -616,9 +618,9 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](3);
         uint256[] memory bps = new uint256[](3);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 5_000;
-        bens[1] = bob;
+        bens[1] = sabak;
         bps[1] = 3_000;
         bens[2] = carol;
         bps[2] = 2_000;
@@ -642,7 +644,7 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](1);
         uint256[] memory bps = new uint256[](1);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 10_000;
         rskWill.configureAsset(address(0), bens, bps);
 
@@ -653,27 +655,27 @@ contract RskWillTest is Test {
 
 
     function test_addBeneficiaryByName_resolvesCorrectly() public {
-        bytes32 aliceHash = keccak256("alice.rsk");
-        rnsRegistry.resolver_().setAddr(aliceHash, alice);
+        bytes32 etetteHash = keccak256("etette.rsk");
+        rnsRegistry.resolver_().setAddr(etetteHash, etette);
 
         vm.startPrank(owner);
         rskWill.createWill(HEARTBEAT, COOLDOWN);
 
         address[] memory bens = new address[](1);
         uint256[] memory bps = new uint256[](1);
-        bens[0] = bob;
+        bens[0] = sabak;
         bps[0] = 10_000;
         rskWill.configureAsset(address(0), bens, bps);
 
-        rskWill.addBeneficiaryByName(address(0), aliceHash, 3_000);
+        rskWill.addBeneficiaryByName(address(0), etetteHash, 3_000);
         vm.stopPrank();
 
         (address[] memory wallets,) = rskWill.assetBeneficiaries(owner, address(0));
-        bool aliceFound = false;
+        bool etetteFound = false;
         for (uint256 i = 0; i < wallets.length; i++) {
-            if (wallets[i] == alice) aliceFound = true;
+            if (wallets[i] == etette) etetteFound = true;
         }
-        assertTrue(aliceFound);
+        assertTrue(etetteFound);
     }
 
     function test_addBeneficiaryByName_revertsOnUnregisteredName() public {
@@ -685,7 +687,7 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](1);
         uint256[] memory bps = new uint256[](1);
-        bens[0] = bob;
+        bens[0] = sabak;
         bps[0] = 10_000;
         rskWill.configureAsset(address(0), bens, bps);
 
@@ -698,7 +700,7 @@ contract RskWillTest is Test {
         _createAndFundWill();
         skip(HEARTBEAT + 1);
 
-        vm.prank(alice);
+        vm.prank(etette);
         rskWill.initiateClaim(owner);
 
         assertEq(uint256(rskWill.willState(owner)), uint256(RskWill.WillState.CLAIMING));
@@ -709,8 +711,8 @@ contract RskWillTest is Test {
         skip(HEARTBEAT + 1);
 
         vm.expectEmit(true, true, false, false);
-        emit IRskWill.ClaimInitiated(owner, alice, block.timestamp);
-        vm.prank(alice);
+        emit IRskWill.ClaimInitiated(owner, etette, block.timestamp);
+        vm.prank(etette);
         rskWill.initiateClaim(owner);
     }
 
@@ -719,16 +721,16 @@ contract RskWillTest is Test {
         skip(HEARTBEAT - 1);
 
         vm.expectRevert(IRskWill.HeartbeatStillRunning.selector);
-        vm.prank(alice);
+        vm.prank(etette);
         rskWill.initiateClaim(owner);
     }
 
-    function test_initiateClaim_revertsForStranger() public {
+    function test_initiateClaim_revertsForluke() public {
         _createAndFundWill();
         skip(HEARTBEAT + 1);
 
         vm.expectRevert(IRskWill.NotABeneficiary.selector);
-        vm.prank(stranger);
+        vm.prank(luke);
         rskWill.initiateClaim(owner);
     }
 
@@ -737,7 +739,7 @@ contract RskWillTest is Test {
         _lapseAndClaim();
 
         vm.expectRevert(IRskWill.WillNotActive.selector);
-        vm.prank(bob);
+        vm.prank(sabak);
         rskWill.initiateClaim(owner);
     }
 
@@ -745,8 +747,8 @@ contract RskWillTest is Test {
         _createAndFundWill();
         skip(HEARTBEAT + 1);
 
-        // bob
-        vm.prank(bob);
+        // sabak
+        vm.prank(sabak);
         rskWill.initiateClaim(owner);
 
         assertEq(uint256(rskWill.willState(owner)), uint256(RskWill.WillState.CLAIMING));
@@ -769,7 +771,7 @@ contract RskWillTest is Test {
         vm.prank(owner);
         rskWill.cancelClaim();
         vm.expectRevert(IRskWill.HeartbeatStillRunning.selector);
-        vm.prank(alice);
+        vm.prank(etette);
         rskWill.initiateClaim(owner);
     }
 
@@ -791,12 +793,12 @@ contract RskWillTest is Test {
         vm.stopPrank();
     }
 
-    function test_cancelClaim_revertsForStranger() public {
+    function test_cancelClaim_revertsForluke() public {
         _createAndFundWill();
         _lapseAndClaim();
 
         vm.expectRevert(IRskWill.WillDoesNotExist.selector);
-        vm.prank(stranger);
+        vm.prank(luke);
         rskWill.cancelClaim();
     }
 
@@ -807,7 +809,7 @@ contract RskWillTest is Test {
         vm.prank(owner);
         rskWill.cancelClaim();
         skip(HEARTBEAT + 1);
-        vm.prank(alice);
+        vm.prank(etette);
         rskWill.initiateClaim(owner);
 
         assertEq(uint256(rskWill.willState(owner)), uint256(RskWill.WillState.CLAIMING));
@@ -818,14 +820,14 @@ contract RskWillTest is Test {
         _lapseAndClaim();
         skip(COOLDOWN + 1);
 
-        uint256 aliceBefore = alice.balance;
-        uint256 bobBefore = bob.balance;
+        uint256 etetteBefore = etette.balance;
+        uint256 sabakBefore = sabak.balance;
 
         rskWill.distributeFunds(owner);
 
-        // alice 60%, bob 40% 
-        assertEq(alice.balance - aliceBefore, 6 ether);
-        assertEq(bob.balance - bobBefore, 4 ether);
+        // etette 60%, sabak 40% 
+        assertEq(etette.balance - etetteBefore, 6 ether);
+        assertEq(sabak.balance - sabakBefore, 4 ether);
     }
 
     function test_distributeFunds_sendsTokensToBeneficiaries() public {
@@ -834,8 +836,8 @@ contract RskWillTest is Test {
         skip(COOLDOWN + 1);
 
         rskWill.distributeFunds(owner);
-        assertEq(tokenA.balanceOf(alice), 60 ether);
-        assertEq(tokenA.balanceOf(bob), 40 ether);
+        assertEq(rifToken.balanceOf(etette), 60 ether);
+        assertEq(rifToken.balanceOf(sabak), 40 ether);
     }
 
     function test_distributeFunds_setsStateToSettled() public {
@@ -856,7 +858,7 @@ contract RskWillTest is Test {
         rskWill.distributeFunds(owner);
 
         assertEq(rskWill.rbtcBalance(owner), 0);
-        assertEq(rskWill.tokenBalance(owner, address(tokenA)), 0);
+        assertEq(rskWill.tokenBalance(owner, address(rifToken)), 0);
     }
 
     function test_distributeFunds_revertsBeforeCooldown() public {
@@ -881,7 +883,7 @@ contract RskWillTest is Test {
         skip(COOLDOWN + 1);
 
         // anyone can trigger distribute
-        vm.prank(stranger);
+        vm.prank(luke);
         rskWill.distributeFunds(owner);
 
         assertEq(uint256(rskWill.willState(owner)), uint256(RskWill.WillState.SETTLED));
@@ -904,34 +906,34 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](2);
         uint256[] memory bps = new uint256[](2);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 5_000;
-        bens[1] = bob;
+        bens[1] = sabak;
         bps[1] = 5_000;
 
         rskWill.configureAsset(address(0), bens, bps);
-        rskWill.configureAsset(address(tokenA), bens, bps);
+        rskWill.configureAsset(address(rifToken), bens, bps);
         rskWill.configureAsset(address(tokenB), bens, bps);
 
         rskWill.depositRBTC{value: 10 ether}();
 
-        tokenA.approve(address(rskWill), 200 ether);
-        rskWill.depositToken(address(tokenA), 200 ether);
+        rifToken.approve(address(rskWill), 200 ether);
+        rskWill.depositToken(address(rifToken), 200 ether);
 
         tokenB.approve(address(rskWill), 400 ether);
         rskWill.depositToken(address(tokenB), 400 ether);
         vm.stopPrank();
 
         skip(HEARTBEAT + 1);
-        vm.prank(alice);
+        vm.prank(etette);
         rskWill.initiateClaim(owner);
 
         skip(COOLDOWN + 1);
         rskWill.distributeFunds(owner);
 
-        assertEq(alice.balance, 5 ether);
-        assertEq(tokenA.balanceOf(alice), 100 ether);
-        assertEq(tokenB.balanceOf(alice), 200 ether);
+        assertEq(etette.balance, 5 ether);
+        assertEq(rifToken.balanceOf(etette), 100 ether);
+        assertEq(tokenB.balanceOf(etette), 200 ether);
     }
 
     function test_distributeFunds_lastBeneficiaryReceivesRemainder() public {
@@ -940,9 +942,9 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](3);
         uint256[] memory bps = new uint256[](3);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 3_333;
-        bens[1] = bob;
+        bens[1] = sabak;
         bps[1] = 3_333;
         bens[2] = carol;
         bps[2] = 3_334;
@@ -951,11 +953,11 @@ contract RskWillTest is Test {
         vm.stopPrank();
 
         skip(HEARTBEAT + 1);
-        vm.prank(alice);
+        vm.prank(etette);
         rskWill.initiateClaim(owner);
         skip(COOLDOWN + 1);
         rskWill.distributeFunds(owner);
-        uint256 totalSent = alice.balance + bob.balance + carol.balance;
+        uint256 totalSent = etette.balance + sabak.balance + carol.balance;
         assertEq(totalSent, 10 ether);
         assertEq(rskWill.rbtcBalance(owner), 0);
     }
@@ -966,9 +968,9 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](2);
         uint256[] memory bps = new uint256[](2);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 5_000;
-        bens[1] = bob;
+        bens[1] = sabak;
         bps[1] = 5_000;
 
         rskWill.configureAsset(address(0), bens, bps);
@@ -981,12 +983,12 @@ contract RskWillTest is Test {
         vm.stopPrank();
 
         skip(HEARTBEAT + 1);
-        vm.prank(alice);
+        vm.prank(etette);
         rskWill.initiateClaim(owner);
         skip(COOLDOWN + 1);
         rskWill.distributeFunds(owner);
-        assertEq(alice.balance, 5 ether);
-        assertEq(bob.balance, 5 ether);
+        assertEq(etette.balance, 5 ether);
+        assertEq(sabak.balance, 5 ether);
         assertEq(uint256(rskWill.willState(owner)), uint256(RskWill.WillState.SETTLED));
     }
 
@@ -1000,7 +1002,7 @@ contract RskWillTest is Test {
         uint256[] memory bps = new uint256[](2);
         bens[0] = address(reentrant);
         bps[0] = 5_000;
-        bens[1] = bob;
+        bens[1] = sabak;
         bps[1] = 5_000;
 
         rskWill.configureAsset(address(0), bens, bps);
@@ -1008,7 +1010,7 @@ contract RskWillTest is Test {
         vm.stopPrank();
 
         skip(HEARTBEAT + 1);
-        vm.prank(bob);
+        vm.prank(sabak);
         rskWill.initiateClaim(owner);
         skip(COOLDOWN + 1);
         rskWill.distributeFunds(owner);
@@ -1020,18 +1022,18 @@ contract RskWillTest is Test {
         _createAndFundWill();
         skip(HEARTBEAT + 1);
         bytes memory callData = abi.encodeWithSelector(RskWill.initiateClaim.selector, owner);
-        (bool success,) = forwarder.forward(address(rskWill), alice, callData);
+        (bool success,) = forwarder.forward(address(rskWill), etette, callData);
         assertTrue(success);
 
         assertEq(uint256(rskWill.willState(owner)), uint256(RskWill.WillState.CLAIMING));
     }
 
-    function test_rifRelay_strangerCannotImpersonateBeneficiary() public {
+    function test_rifRelay_lukeCannotImpersonateBeneficiary() public {
         _createAndFundWill();
         skip(HEARTBEAT + 1);
 
         bytes memory callData = abi.encodeWithSelector(RskWill.initiateClaim.selector, owner);
-        (bool success, bytes memory returnData) = forwarder.forward(address(rskWill), stranger, callData);
+        (bool success, bytes memory returnData) = forwarder.forward(address(rskWill), luke, callData);
         assertFalse(success);
         bytes4 selector;
         assembly {
@@ -1065,11 +1067,11 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](1);
         uint256[] memory bps = new uint256[](1);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 10_000;
 
         rskWill.configureAsset(address(0), bens, bps);
-        rskWill.configureAsset(address(tokenA), bens, bps);
+        rskWill.configureAsset(address(rifToken), bens, bps);
         rskWill.configureAsset(address(tokenB), bens, bps);
         vm.stopPrank();
 
@@ -1077,21 +1079,21 @@ contract RskWillTest is Test {
         assertEq(assets.length, 3);
     }
 
-    function testFuzz_allocationAlwaysSumsToTotalBps(uint16 aliceBps, uint16 bobBps) public {
-        aliceBps = uint16(bound(aliceBps, 1_000, 9_000));
-        bobBps = uint16(10_000 - aliceBps);
+    function testFuzz_allocationAlwaysSumsToTotalBps(uint16 etetteBps, uint16 sabakBps) public {
+        etetteBps = uint16(bound(etetteBps, 1_000, 9_000));
+        sabakBps = uint16(10_000 - etetteBps);
 
         vm.startPrank(owner);
         rskWill.createWill(HEARTBEAT, COOLDOWN);
 
         address[] memory bens = new address[](2);
         uint256[] memory bps = new uint256[](2);
-        bens[0] = alice;
-        bps[0] = aliceBps;
-        bens[1] = bob;
-        bps[1] = bobBps;
+        bens[0] = etette;
+        bps[0] = etetteBps;
+        bens[1] = sabak;
+        bps[1] = sabakBps;
         rskWill.configureAsset(address(0), bens, bps);
-        rskWill.removeBeneficiary(address(0), alice);
+        rskWill.removeBeneficiary(address(0), etette);
         vm.stopPrank();
 
         (, uint256[] memory allocs) = rskWill.assetBeneficiaries(owner, address(0));
@@ -1111,24 +1113,24 @@ contract RskWillTest is Test {
 
         address[] memory bens = new address[](2);
         uint256[] memory bps = new uint256[](2);
-        bens[0] = alice;
+        bens[0] = etette;
         bps[0] = 6_000;
-        bens[1] = bob;
+        bens[1] = sabak;
         bps[1] = 4_000;
         rskWill.configureAsset(address(0), bens, bps);
         rskWill.depositRBTC{value: depositAmount}();
         vm.stopPrank();
 
-        uint256 aliceBefore = alice.balance;
-        uint256 bobBefore = bob.balance;
+        uint256 etetteBefore = etette.balance;
+        uint256 sabakBefore = sabak.balance;
 
         skip(HEARTBEAT + 1);
-        vm.prank(alice);
+        vm.prank(etette);
         rskWill.initiateClaim(owner);
         skip(COOLDOWN + 1);
         rskWill.distributeFunds(owner);
 
-        uint256 totalSent = (alice.balance - aliceBefore) + (bob.balance - bobBefore);
+        uint256 totalSent = (etette.balance - etetteBefore) + (sabak.balance - sabakBefore);
         assertEq(totalSent, depositAmount);
     }
 }

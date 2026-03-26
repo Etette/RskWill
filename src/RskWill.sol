@@ -287,6 +287,7 @@ contract RskWill is IRskWill {
         emit WillDistributed(willOwner);
     }
 
+    // read contract data
     function willState(address owner) external view returns (WillState) {
         return wills[owner].state; // current state of will
     }
@@ -334,6 +335,7 @@ contract RskWill is IRskWill {
         return wills[owner].configuredAssets;
     }
 
+    // helpers
     function _resetHeartbeat(address owner) internal {
         wills[owner].lastAlive = block.timestamp;
     }
